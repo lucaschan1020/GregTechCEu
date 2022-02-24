@@ -1,5 +1,6 @@
 package gregtech.common.metatileentities.multi.multiblockpart;
 
+import codechicken.lib.raytracer.CuboidRayTraceResult;
 import codechicken.lib.render.CCRenderState;
 import codechicken.lib.render.pipeline.IVertexOperation;
 import codechicken.lib.vec.Matrix4;
@@ -11,21 +12,33 @@ import gregtech.api.metatileentity.MetaTileEntity;
 import gregtech.api.metatileentity.MetaTileEntityHolder;
 import gregtech.api.metatileentity.multiblock.IMultiblockAbilityPart;
 import gregtech.api.metatileentity.multiblock.MultiblockAbility;
+import gregtech.api.util.GTHashMaps;
+import gregtech.api.util.InventoryUtils;
+import gregtech.api.util.ItemStackKey;
 import gregtech.client.renderer.texture.cube.SimpleOverlayRenderer;
 import gregtech.client.renderer.texture.Textures;
 import gregtech.api.capability.impl.NotifiableItemStackHandler;
 import net.minecraft.client.resources.I18n;
 import net.minecraft.entity.player.EntityPlayer;
 import net.minecraft.item.ItemStack;
+import net.minecraft.nbt.NBTTagCompound;
+import net.minecraft.network.PacketBuffer;
+import net.minecraft.util.EnumFacing;
+import net.minecraft.util.EnumHand;
 import net.minecraft.util.ResourceLocation;
+import net.minecraft.util.text.TextComponentTranslation;
 import net.minecraft.world.World;
 import net.minecraftforge.items.IItemHandlerModifiable;
 import net.minecraftforge.items.ItemStackHandler;
 
 import javax.annotation.Nullable;
+import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
 
 public class MetaTileEntityItemBus extends MetaTileEntityMultiblockNotifiablePart implements IMultiblockAbilityPart<IItemHandlerModifiable> {
+
+    private boolean autoCollapse;
 
     private static final int[] INVENTORY_SIZES = {1, 4, 9, 16, 25, 36, 49};
 
@@ -41,6 +54,7 @@ public class MetaTileEntityItemBus extends MetaTileEntityMultiblockNotifiablePar
 
     @Override
     public void update() {
+        IItemHandlerModifiable inventory = (isExportHatch ? this.getExportItems() : this.getImportItems());
         super.update();
         if (!getWorld().isRemote && getOffsetTimer() % 5 == 0) {
             if (isExportHatch) {
@@ -48,7 +62,12 @@ public class MetaTileEntityItemBus extends MetaTileEntityMultiblockNotifiablePar
             } else {
                 pullItemsFromNearbyHandlers(getFrontFacing());
             }
+            // Only attempt to auto collapse the inventory contents once the bus has been notified
+            if (isAutoCollapse() && (isExportHatch ? this.getNotifiedItemOutputList().contains(inventory) : this.getNotifiedItemInputList().contains(inventory))){
+                collapseInventorySlotContents(inventory);
+            }
         }
+
     }
 
     @Override
@@ -110,6 +129,101 @@ public class MetaTileEntityItemBus extends MetaTileEntityMultiblockNotifiablePar
         return builder.bindPlayerInventory(player.inventory, GuiTextures.SLOT, 7 + xOffset, 18 + 18 * rowSize + 12);
     }
 
+    private static void collapseInventorySlotContents(IItemHandlerModifiable inventory) {
+
+        // Gather a snapshot of the provided inventory
+        HashMap<ItemStackKey, Integer> inventoryContents = GTHashMaps.fromItemHandler(inventory);
+
+        List<ItemStack> inventoryItemContents = new ArrayList<>();
+
+        // Populate the list of item stacks in the inventory with apportioned item stacks, for easy replacement
+        for(ItemStackKey key : inventoryContents.keySet()) {
+            ItemStack stack = key.getItemStack();
+            stack.setCount(inventoryContents.get(key));
+            inventoryItemContents.addAll(InventoryUtils.apportionStack(stack, stack.getMaxStackSize()));
+        }
+
+        for(int i = 0; i < inventory.getSlots(); i++) {
+            ItemStack stackToMove;
+            // Ensure that we are not exceeding the List size when attempting to populate items
+            if(i >= inventoryItemContents.size()) {
+                stackToMove = ItemStack.EMPTY;
+            }
+            else {
+                stackToMove = inventoryItemContents.get(i);
+            }
+
+            // Populate the slots
+            inventory.setStackInSlot(i, stackToMove);
+        }
+
+    }
+
+    @Override
+    public boolean onScrewdriverClick(EntityPlayer playerIn, EnumHand hand, EnumFacing facing, CuboidRayTraceResult hitResult) {
+
+        // Check if the player is sneaking to not interfere with machine grid access
+        if (playerIn.isSneaking()){
+            boolean isAttached = false;
+            if (this.isAttachedToMultiBlock()){
+                setAutoCollapse(!this.autoCollapse);
+                isAttached = true;
+            }
+
+            if(!getWorld().isRemote) {
+                if (isAttached) {
+                    if(this.autoCollapse) {
+                        playerIn.sendMessage(new TextComponentTranslation("gregtech.bus.collapse_true"));
+                    }
+                    else {
+                        playerIn.sendMessage(new TextComponentTranslation("gregtech.bus.collapse_false"));
+                    }
+                } else {
+                    playerIn.sendMessage(new TextComponentTranslation("gregtech.bus.collapse.error"));
+                }
+            }
+            return true;
+        }
+        return super.onScrewdriverClick(playerIn, hand, facing, hitResult);
+    }
+
+
+    @Override
+    public NBTTagCompound writeToNBT(NBTTagCompound data) {
+        super.writeToNBT(data);
+        data.setBoolean("autoCollapse", autoCollapse);
+        return data;
+    }
+
+    @Override
+    public void readFromNBT(NBTTagCompound data) {
+        super.readFromNBT(data);
+        if (data.hasKey("autoCollapse")) {
+            this.autoCollapse = data.getBoolean("autoCollapse");
+        }
+    }
+
+    @Override
+    public void writeInitialSyncData(PacketBuffer buf) {
+        super.writeInitialSyncData(buf);
+        buf.writeBoolean(autoCollapse);
+    }
+
+    @Override
+    public void receiveInitialSyncData(PacketBuffer buf) {
+        super.receiveInitialSyncData(buf);
+        this.autoCollapse = buf.readBoolean();
+    }
+
+
+    public boolean isAutoCollapse() {
+        return autoCollapse;
+    }
+
+    public void setAutoCollapse(boolean inverted) {
+        autoCollapse = inverted;
+    }
+
     @Override
     public void addInformation(ItemStack stack, @Nullable World player, List<String> tooltip, boolean advanced) {
         if (this.isExportHatch)
@@ -117,6 +231,7 @@ public class MetaTileEntityItemBus extends MetaTileEntityMultiblockNotifiablePar
         else
             tooltip.add(I18n.format("gregtech.machine.item_bus.import.tooltip"));
         tooltip.add(I18n.format("gregtech.universal.tooltip.item_storage_capacity", getInventorySize()));
+        tooltip.add(I18n.format("gregtech.bus.collapse.info"));
         tooltip.add(I18n.format("gregtech.universal.enabled"));
     }
 }
