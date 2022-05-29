@@ -193,7 +193,7 @@ public class MetaTileEntities {
     public static MetaTileEntityFluidDrill BASIC_FLUID_DRILLING_RIG;
     public static MetaTileEntityFluidDrill FLUID_DRILLING_RIG;
     public static MetaTileEntityFluidDrill ADVANCED_FLUID_DRILLING_RIG;
-    public static MetaTileEntityCharcoalPile CHARCOAL_PIT;
+    public static MetaTileEntityCharcoalPile CHARCOAL_PILE;
     //STORAGE SECTION
     public static MetaTileEntityLockedSafe LOCKED_SAFE;
     public static MetaTileEntityTankValve WOODEN_TANK_VALVE;
@@ -508,7 +508,7 @@ public class MetaTileEntities {
         FLUID_DRILLING_RIG = registerMetaTileEntity(1033, new MetaTileEntityFluidDrill(gregtechId("fluid_drilling_rig.hv"), 3));
         ADVANCED_FLUID_DRILLING_RIG = registerMetaTileEntity(1034, new MetaTileEntityFluidDrill(gregtechId("fluid_drilling_rig.ev"), 4));
 
-        CHARCOAL_PIT = registerMetaTileEntity(1035, new MetaTileEntityCharcoalPile(gregtechId("charcoal_pit")));
+        CHARCOAL_PILE = registerMetaTileEntity(1035, new MetaTileEntityCharcoalPile(gregtechId("charcoal_pile")));
 
         // MISC MTE's START: IDs 1150-2000
 
