@@ -17,8 +17,8 @@ import gregtech.api.items.metaitem.MetaItem;
 import gregtech.api.items.metaitem.stats.IItemBehaviour;
 import gregtech.api.items.toolitem.ToolMetaItem;
 import gregtech.api.metatileentity.MetaTileEntity;
-import gregtech.api.metatileentity.WorkableTieredMetaTileEntity;
 import gregtech.api.metatileentity.SimpleGeneratorMetaTileEntity;
+import gregtech.api.metatileentity.WorkableTieredMetaTileEntity;
 import gregtech.api.metatileentity.interfaces.IGregTechTileEntity;
 import gregtech.api.unification.OreDictUnifier;
 import gregtech.api.unification.ore.OrePrefix;
@@ -1025,5 +1025,10 @@ public class GTUtility {
     public static MetaTileEntity getMetaTileEntity(ItemStack stack) {
         if (!(stack.getItem() instanceof MachineItemBlock)) return null;
         return GregTechAPI.MTE_REGISTRY.getObjectById(stack.getItemDamage());
+    }
+
+    public static int roundDown(double number) {
+        int rounded = (int) number;
+        return rounded > number ? rounded - 1 : rounded;
     }
 }

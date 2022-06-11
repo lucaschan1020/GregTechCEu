@@ -16,6 +16,7 @@ import gregtech.api.util.GTControlledRegistry;
 import gregtech.api.util.GTLog;
 import gregtech.api.util.IBlockOre;
 import gregtech.common.items.MetaItems;
+import it.unimi.dsi.fastutil.objects.Object2ObjectOpenHashMap;
 import net.minecraft.util.ResourceLocation;
 import net.minecraftforge.fml.common.Loader;
 import net.minecraftforge.fml.common.eventhandler.GenericEvent;
@@ -23,7 +24,6 @@ import stanhebben.zenscript.annotations.ZenClass;
 import stanhebben.zenscript.annotations.ZenMethod;
 
 import javax.annotation.Nullable;
-import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
@@ -35,7 +35,8 @@ public class GregTechAPI {
     public static final MaterialRegistry MATERIAL_REGISTRY = new MaterialRegistry();
 
     public static BlockMachine MACHINE;
-    public static final Map<Material, Map<StoneType, IBlockOre>> oreBlockTable = new HashMap<>();
+    public static final Map<Material, Map<StoneType, IBlockOre>> oreBlockTable = new Object2ObjectOpenHashMap<>();
+    public static final Map<Material, Map<StoneType, IBlockOre>> oreBlockSmallTable = new Object2ObjectOpenHashMap<>();
 
     public static final BaseCreativeTab TAB_GREGTECH =
             new BaseCreativeTab(GTValues.MODID + ".main", () -> MetaItems.BATTERY_HULL_HV.getStackForm(), true);
